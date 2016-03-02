@@ -40,7 +40,7 @@ import RPi.GPIO as GPIO
 import glob
 
 # logging.basicConfig()
-logger = logging.getLogger('ispresso')
+#logger = logging.getLogger('ispresso')
 
 
 # REMOTE DEBUG -- TODO:  Remove this before going to production
@@ -58,7 +58,7 @@ GPIO.setup(gpio_btn_heat_sig, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(gpio_heat, GPIO.OUT) 
 GPIO.setup(gpio_btn_heat_led, GPIO.OUT)
 
-def logger_init():
+#def logger_init():
 
     logger.setLevel(logging.DEBUG)
     log_file_size = 1024 * 1024 * 1  # 1 MB
@@ -887,7 +887,7 @@ if __name__ == '__main__':
     
         call(["modprobe", "w1-gpio"])
         call(["modprobe", "w1-therm"])
-        call(["modprobe", "i2c-dev"])
+     
         
         base_dir = '/sys/bus/w1/devices/'
         
@@ -909,8 +909,8 @@ if __name__ == '__main__':
         statusQ = Queue(2)       
         parent_conn, child_conn = Pipe()
     
-        lcd_parent_conn, lcd_child_conn = Pipe()
-        mem.lcd_connection = lcd_parent_conn
+        #lcd_parent_conn, lcd_child_conn = Pipe()
+        #mem.lcd_connection = lcd_parent_conn
 
         initialize()
 
@@ -925,9 +925,9 @@ if __name__ == '__main__':
         GPIO.add_event_detect(gpio_btn_heat_sig, GPIO.RISING, callback=catchButton, bouncetime=250)  
         GPIO.add_event_detect(gpio_btn_pump_sig, GPIO.RISING, callback=catchButton, bouncetime=250)  # was RISING, at one point HIGH. who knows
 
-        mem.heat_connection = parent_conn
-        lcdproc = Process(name="lcdControlProc", target=lcdControlProc, args=(lcd_child_conn,))
-        lcdproc.start()
+        #mem.heat_connection = parent_conn
+        #lcdproc = Process(name="lcdControlProc", target=lcdControlProc, args=(lcd_child_conn,))
+        #lcdproc.start()
         
         brewproc = Process(name="brewControlProc", target=brewControlProc, args=(brew_child_conn,))
         brewproc.start()
