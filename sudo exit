@@ -1,0 +1,441 @@
+[1mdiff --git a/initscript/ispresso b/initscript/ispresso[m
+[1mindex f62abde..636742f 100755[m
+[1m--- a/initscript/ispresso[m
+[1m+++ b/initscript/ispresso[m
+[36m@@ -43,8 +43,7 @@[m [mSCRIPTNAME=/etc/init.d/$NAME[m
+ do_start()[m
+ {[m
+ 	# need to load i2c module explicitly because the 3.18 changes have borked this whole thing [m
+[31m-	modprobe i2c_dev[m
+[31m-	i2cdetect -y 1 > /var/log/i2cdetect.log[m
+[32m+[m
+ [m
+ 	# Return[m
+ 	#   0 if daemon has been started[m
+[1mdiff --git a/lcd/Adafruit_CharLCD.py b/lcd/Adafruit_CharLCD.py[m
+[1mdeleted file mode 100755[m
+[1mindex 22f3d7d..0000000[m
+[1m--- a/lcd/Adafruit_CharLCD.py[m
+[1m+++ /dev/null[m
+[36m@@ -1,261 +0,0 @@[m
+[31m-#!/usr/bin/python[m
+[31m-[m
+[31m-#[m
+[31m-# based on code from lrvick and LiquidCrystal[m
+[31m-# lrvic - https://github.com/lrvick/raspi-hd44780/blob/master/hd44780.py[m
+[31m-# LiquidCrystal - https://github.com/arduino/Arduino/blob/master/libraries/LiquidCrystal/LiquidCrystal.cpp[m
+[31m-#[m
+[31m-[m
+[31m-from time import sleep[m
+[31m-[m
+[31m-class Adafruit_CharLCD:[m
+[31m-[m
+[31m-    # commands[m
+[31m-    LCD_CLEARDISPLAY 		= 0x01[m
+[31m-    LCD_RETURNHOME 		= 0x02[m
+[31m-    LCD_ENTRYMODESET 		= 0x04[m
+[31m-    LCD_DISPLAYCONTROL 		= 0x08[m
+[31m-    LCD_CURSORSHIFT 		= 0x10[m
+[31m-    LCD_FUNCTIONSET 		= 0x20[m
+[31m-    LCD_SETCGRAMADDR 		= 0x40[m
+[31m-    LCD_SETDDRAMADDR 		= 0x80[m
+[31m-[m
+[31m-    # flags for display entry mode[m
+[31m-    LCD_ENTRYRIGHT 		= 0x00[m
+[31m-    LCD_ENTRYLEFT 		= 0x02[m
+[31m-    LCD_ENTRYSHIFTINCREMENT 	= 0x01[m
+[31m-    LCD_ENTRYSHIFTDECREMENT 	= 0x00[m
+[31m-[m
+[31m-    # flags for display on/off control[m
+[31m-    LCD_DISPLAYON 		= 0x04[m
+[31m-    LCD_DISPLAYOFF 		= 0x00[m
+[31m-    LCD_CURSORON 		= 0x02[m
+[31m-    LCD_CURSOROFF 		= 0x00[m
+[31m-    LCD_BLINKON 		= 0x01[m
+[31m-    LCD_BLINKOFF 		= 0x00[m
+[31m-[m
+[31m-    # flags for display/cursor shift[m
+[31m-    LCD_DISPLAYMOVE 		= 0x08[m
+[31m-    LCD_CURSORMOVE 		= 0x00[m
+[31m-[m
+[31m-    # flags for display/cursor shift[m
+[31m-    LCD_DISPLAYMOVE 		= 0x08[m
+[31m-    LCD_CURSORMOVE 		= 0x00[m
+[31m-    LCD_MOVERIGHT 		= 0x04[m
+[31m-    LCD_MOVELEFT 		= 0x00[m
+[31m-[m
+[31m-    # flags for function set[m
+[31m-    LCD_8BITMODE 		= 0x10[m
+[31m-    LCD_4BITMODE 		= 0x00[m
+[31m-    LCD_2LINE 			= 0x08[m
+[31m-    LCD_1LINE 			= 0x00[m
+[31m-    LCD_5x10DOTS 		= 0x04[m
+[31m-    LCD_5x8DOTS 		= 0x00[m
+[31m-[m
+[31m-[m
+[31m-[m
+[31m-    def __init__(self, pin_rs=25, pin_e=24, pins_db=[23, 17, 27, 22], GPIO = None):[m
+[31m-	# Emulate the old behavior of using RPi.GPIO if we haven't been given[m
+[31m-	# an explicit GPIO interface to use[m
+[31m-	if not GPIO:[m
+[31m-	    import RPi.GPIO as GPIO[m
+[31m-   	self.GPIO = GPIO[m
+[31m-        self.pin_rs = pin_rs[m
+[31m-        self.pin_e = pin_e[m
+[31m-        self.pins_db = pins_db[m
+[31m-[m
+[31m-        self.GPIO.setmode(GPIO.BCM)[m
+[31m-        self.GPIO.setup(self.pin_e, GPIO.OUT)[m
+[31m-        self.GPIO.setup(self.pin_rs, GPIO.OUT)[m
+[31m-[m
+[31m-        for pin in self.pins_db:[m
+[31m-            self.GPIO.setup(pin, GPIO.OUT)[m
+[31m-[m
+[31m-	self.write4bits(0x33) # initialization[m
+[31m-	self.write4bits(0x32) # initialization[m
+[31m-	self.write4bits(0x28) # 2 line 5x7 matrix[m
+[31m-	self.write4bits(0x0C) # turn cursor off 0x0E to enable cursor[m
+[31m-	self.write4bits(0x06) # shift cursor right[m
+[31m-[m
+[31m-	self.displaycontrol = self.LCD_DISPLAYON | self.LCD_CURSOROFF | self.LCD_BLINKOFF[m
+[31m-[m
+[31m-	self.displayfunction = self.LCD_4BITMODE | self.LCD_1LINE | self.LCD_5x8DOTS[m
+[31m-	self.displayfunction |= self.LCD_2LINE[m
+[31m-[m
+[31m-	""" Initialize to default text direction (for romance languages) """[m
+[31m-	self.displaymode =  self.LCD_ENTRYLEFT | self.LCD_ENTRYSHIFTDECREMENT[m
+[31m-	self.write4bits(self.LCD_ENTRYMODESET | self.displaymode) #  set the entry mode[m
+[31m-[m
+[31m-        self.clear()[m
+[31m-[m
+[31m-[m
+[31m-    def begin(self, cols, lines):[m
+[31m-[m
+[31m-	if (lines > 1):[m
+[31m-		self.numlines = lines[m
+[31m-    		self.displayfunction |= self.LCD_2LINE[m
+[31m-		self.currline = 0[m
+[31m-[m
+[31m-[m
+[31m-    def home(self):[m
+[31m-[m
+[31m-	self.write4bits(self.LCD_RETURNHOME) # set cursor position to zero[m
+[31m-	self.delayMicroseconds(3000) # this command takes a long time![m
+[31m-	[m
+[31m-[m
+[31m-    def clear(self):[m
+[31m-[m
+[31m-	self.write4bits(self.LCD_CLEARDISPLAY) # command to clear display[m
+[31m-	self.delayMicroseconds(3000)	# 3000 microsecond sleep, clearing the display takes a long time[m
+[31m-[m
+[31m-[m
+[31m-    def setCursor(self, col, row):[m
+[31m-[m
+[31m-	self.row_offsets = [ 0x00, 0x40, 0x14, 0x54 ][m
+[31m-[m
+[31m-	if ( row > self.numlines ): [m
+[31m-		row = self.numlines - 1 # we count rows starting w/0[m
+[31m-[m
+[31m-	self.write4bits(self.LCD_SETDDRAMADDR | (col + self.row_offsets[row]))[m
+[31m-[m
+[31m-[m
+[31m-    def noDisplay(self): [m
+[31m-	""" Turn the display off (quickly) """[m
+[31m-[m
+[31m-	self.displaycontrol &= ~self.LCD_DISPLAYON[m
+[31m-	self.write4bits(self.LCD_DISPLAYCONTROL | self.displaycontrol)[m
+[31m-[m
+[31m-[m
+[31m-    def display(self):[m
+[31m-	""" Turn the display on (quickly) """[m
+[31m-[m
+[31m-	self.displaycontrol |= self.LCD_DISPLAYON[m
+[31m-	self.write4bits(self.LCD_DISPLAYCONTROL | self.displaycontrol)[m
+[31m-[m
+[31m-[m
+[31m-    def noCursor(self):[m
+[31m-	""" Turns the underline cursor on/off """[m
+[31m-[m
+[31m-	self.displaycontrol &= ~self.LCD_CURSORON[m
+[31m-	self.write4bits(self.LCD_DISPLAYCONTROL | self.displaycontrol)[m
+[31m-[m
+[31m-[m
+[31m-    def cursor(self):[m
+[31m-	""" Cursor On """[m
+[31m-[m
+[31m-	self.displaycontrol |= self.LCD_CURSORON[m
+[31m-	self.write4bits(self.LCD_DISPLAYCONTROL | self.displaycontrol)[m
+[31m-[m
+[31m-[m
+[31m-    def noBlink(self):[m
+[31m-	""" Turn on and off the blinking cursor """[m
+[31m-[m
+[31m-	self.displaycontrol &= ~self.LCD_BLINKON[m
+[31m-	self.write4bits(self.LCD_DISPLAYCONTROL | self.displaycontrol)[m
+[31m-[m
+[31m-[m
+[31m-    def noBlink(self):[m
+[31m-	""" Turn on and off the blinking cursor """[m
+[31m-[m
+[31m-	self.displaycontrol &= ~self.LCD_BLINKON[m
+[31m-	self.write4bits(self.LCD_DISPLAYCONTROL | self.displaycontrol)[m
+[31m-[m
+[31m-[m
+[31m-    def DisplayLeft(self):[m
+[31m-	""" These commands scroll the display without changing the RAM """[m
+[31m-[m
+[31m-	self.write4bits(self.LCD_CURSORSHIFT | self.LCD_DISPLAYMOVE | self.LCD_MOVELEFT)[m
+[31m-[m
+[31m-[m
+[31m-    def scrollDisplayRight(self):[m
+[31m-	""" These commands scroll the display without changing the RAM """[m
+[31m-[m
+[31m-	self.write4bits(self.LCD_CURSORSHIFT | self.LCD_DISPLAYMOVE | self.LCD_MOVERIGHT);[m
+[31m-[m
+[31m-[m
+[31m-    def leftToRight(self):[m
+[31m-	""" This is for text that flows Left to Right """[m
+[31m-[m
+[31m-	self.displaymode |= self.LCD_ENTRYLEFT[m
+[31m-	self.write4bits(self.LCD_ENTRYMODESET | self.displaymode);[m
+[31m-[m
+[31m-[m
+[31m-    def rightToLeft(self):[m
+[31m-	""" This is for text that flows Right to Left """[m
+[31m-	self.displaymode &= ~self.LCD_ENTRYLEFT[m
+[31m-	self.write4bits(self.LCD_ENTRYMODESET | self.displaymode)[m
+[31m-[m
+[31m-[m
+[31m-    def autoscroll(self):[m
+[31m-	""" This will 'right justify' text from the cursor """[m
+[31m-[m
+[31m-	self.displaymode |= self.LCD_ENTRYSHIFTINCREMENT[m
+[31m-	self.write4bits(self.LCD_ENTRYMODESET | self.displaymode)[m
+[31m-[m
+[31m-[m
+[31m-    def noAutoscroll(self): [m
+[31m-	""" This will 'left justify' text from the cursor """[m
+[31m-[m
+[31m-	self.displaymode &= ~self.LCD_ENTRYSHIFTINCREMENT[m
+[31m-	self.write4bits(self.LCD_ENTRYMODESET | self.displaymode)[m
+[31m-[m
+[31m-[m
+[31m-    def write4bits(self, bits, char_mode=False):[m
+[31m-        """ Send command to LCD """[m
+[31m-[m
+[31m-	self.delayMicroseconds(1000) # 1000 microsecond sleep[m
+[31m-[m
+[31m-        bits=bin(bits)[2:].zfill(8)[m
+[31m-[m
+[31m-        self.GPIO.output(self.pin_rs, char_mode)[m
+[31m-[m
+[31m-        for pin in self.pins_db:[m
+[31m-            self.GPIO.output(pin, False)[m
+[31m-[m
+[31m-        for i in range(4):[m
+[31m-            if bits[i] == "1":[m
+[31m-                self.GPIO.output(self.pins_db[::-1][i], True)[m
+[31m-[m
+[31m-	self.pulseEnable()[m
+[31m-[m
+[31m-        for pin in self.pins_db:[m
+[31m-            self.GPIO.output(pin, False)[m
+[31m-[m
+[31m-        for i in range(4,8):[m
+[31m-            if bits[i] == "1":[m
+[31m-                self.GPIO.output(self.pins_db[::-1][i-4], True)[m
+[31m-[m
+[31m-	self.pulseEnable()[m
+[31m-[m
+[31m-[m
+[31m-    def delayMicroseconds(self, microseconds):[m
+[31m-	seconds = microseconds / float(1000000)	# divide microseconds by 1 million for seconds[m
+[31m-	sleep(seconds)[m
+[31m-[m
+[31m-[m
+[31m-    def pulseEnable(self):[m
+[31m-	self.GPIO.output(self.pin_e, False)[m
+[31m-	self.delayMicroseconds(1)		# 1 microsecond pause - enable pulse must be > 450ns [m
+[31m-	self.GPIO.output(self.pin_e, True)[m
+[31m-	self.delayMicroseconds(1)		# 1 microsecond pause - enable pulse must be > 450ns [m
+[31m-	self.GPIO.output(self.pin_e, False)[m
+[31m-	self.delayMicroseconds(1)		# commands need > 37us to settle[m
+[31m-[m
+[31m-[m
+[31m-    def message(self, text):[m
+[31m-        """ Send string to LCD. Newline wraps to second line"""[m
+[31m-[m
+[31m-        for char in text:[m
+[31m-            if char == '\n':[m
+[31m-                self.write4bits(0xC0) # next line[m
+[31m-            else:[m
+[31m-                self.write4bits(ord(char),True)[m
+[31m-[m
+[31m-[m
+[31m-if __name__ == '__main__':[m
+[31m-[m
+[31m-    lcd = Adafruit_CharLCD()[m
+[31m-[m
+[31m-    lcd.clear()[m
+[31m-    lcd.message("  Adafruit 16x2\n  Standard LCD")[m
+[31m-[m
+[1mdiff --git a/lcd/Adafruit_CharLCD_IPclock_example.py b/lcd/Adafruit_CharLCD_IPclock_example.py[m
+[1mdeleted file mode 100755[m
+[1mindex d3f6958..0000000[m
+[1m--- a/lcd/Adafruit_CharLCD_IPclock_example.py[m
+[1m+++ /dev/null[m
+[36m@@ -1,24 +0,0 @@[m
+[31m-#!/usr/bin/python[m
+[31m-[m
+[31m-from Adafruit_CharLCD import Adafruit_CharLCD[m
+[31m-from subprocess import * [m
+[31m-from time import sleep, strftime[m
+[31m-from datetime import datetime[m
+[31m-[m
+[31m-lcd = Adafruit_CharLCD()[m
+[31m-[m
+[31m-cmd = "ip addr show eth0 | grep inet | awk '{print $2}' | cut -d/ -f1"[m
+[31m-[m
+[31m-lcd.begin(16,1)[m
+[31m-[m
+[31m-def run_cmd(cmd):[m
+[31m-        p = Popen(cmd, shell=True, stdout=PIPE)[m
+[31m-        output = p.communicate()[0][m
+[31m-        return output[m
+[31m-[m
+[31m-while 1:[m
+[31m-	lcd.clear()[m
+[31m-	ipaddr = run_cmd(cmd)[m
+[31m-	lcd.message(datetime.now().strftime('%b %d  %H:%M:%S\n'))[m
+[31m-	lcd.message('IP %s' % ( ipaddr ) )[m
+[31m-	sleep(2)[m
+[1mdiff --git a/lcd/Adafruit_I2C.py b/lcd/Adafruit_I2C.py[m
+[1mdeleted file mode 100755[m
+[1mindex 3423461..0000000[m
+[1m--- a/lcd/Adafruit_I2C.py[m
+[1m+++ /dev/null[m
+[36m@@ -1,170 +0,0 @@[m
+[31m-#!/usr/bin/python[m
+[31m-[m
+[31m-import smbus[m
+[31m-[m
+[31m-# ===========================================================================[m
+[31m-# Adafruit_I2C Class[m
+[31m-# ===========================================================================[m
+[31m-[m
+[31m-class Adafruit_I2C :[m
+[31m-[m
+[31m-  @staticmethod[m
+[31m-  def getPiRevision():[m
+[31m-    "Gets the version number of the Raspberry Pi board"[m
+[31m-    # Courtesy quick2wire-python-api[m
+[31m-    # https://github.com/quick2wire/quick2wire-python-api[m
+[31m-    try:[m
+[31m-      with open('/proc/cpuinfo','r') as f:[m
+[31m-        for line in f:[m
+[31m-          if line.startswith('Revision'):[m
+[31m-            return 1 if line.rstrip()[-1] in ['1','2'] else 2[m
+[31m-    except:[m
+[31m-      return 0[m
+[31m-[m
+[31m-  @staticmethod[m
+[31m-  def getPiI2CBusNumber():[m
+[31m-    # Gets the I2C bus number /dev/i2c#[m
+[31m-    return 1 if Adafruit_I2C.getPiRevision() > 1 else 0[m
+[31m- [m
+[31m-  def __init__(self, address, busnum=-1, debug=False):[m
+[31m-    self.address = address[m
+[31m-    # By default, the correct I2C bus is auto-detected using /proc/cpuinfo[m
+[31m-    # Alternatively, you can hard-code the bus version below:[m
+[31m-    # self.bus = smbus.SMBus(0); # Force I2C0 (early 256MB Pi's)[m
+[31m-    # self.bus = smbus.SMBus(1); # Force I2C1 (512MB Pi's)[m
+[31m-    self.bus = smbus.SMBus([m
+[31m-      busnum if busnum >= 0 else Adafruit_I2C.getPiI2CBusNumber())[m
+[31m-    self.debug = debug[m
+[31m-[m
+[31m-  def reverseByteOrder(self, data):[m
+[31m-    "Reverses the byte order of an int (16-bit) or long (32-bit) value"[m
+[31m-    # Courtesy Vishal Sapre[m
+[31m-    byteCount = len(hex(data)[2:].replace('L','')[::2])[m
+[31m-    val       = 0[m
+[31m-    for i in range(byteCount):[m
+[31m-      val    = (val << 8) | (data & 0xff)[m
+[31m-      data >>= 8[m
+[31m-    return val[m
+[31m-[m
+[31m-  def errMsg(self):[m
+[31m-    print "Error accessing 0x%02X: Check your I2C address" % self.address[m
+[31m-    return -1[m
+[31m-[m
+[31m-  def write8(self, reg, value):[m
+[31m-    "Writes an 8-bit value to the specified register/address"[m
+[31m-    try:[m
+[31m-      self.bus.write_byte_data(self.address, reg, value)[m
+[31m-      if self.debug:[m
+[31m-        print "I2C: Wrote 0x%02X to register 0x%02X" % (value, reg)[m
+[31m-    except IOError, err:[m
+[31m-      return self.errMsg()[m
+[31m-[m
+[31m-  def write16(self, reg, value):[m
+[31m-    "Writes a 16-bit value to the specified register/address pair"[m
+[31m-    try:[m
+[31m-      self.bus.write_word_data(self.address, reg, value)[m
+[31m-      if self.debug:[m
+[31m-        print ("I2C: Wrote 0x%02X to register pair 0x%02X,0x%02X" %[m
+[31m-         (value, reg, reg+1))[m
+[31m-    except IOError, err:[m
+[31m-      return self.errMsg()[m
+[31m-[m
+[31m-  def writeList(self, reg, list):[m
+[31m-    "Writes an array of bytes using I2C format"[m
+[31m-    try:[m
+[31m-      if self.debug:[m
+[31m-        print "I2C: Writing list to register 0x%02X:" % reg[m
+[31m-        print list[m
+[31m-      self.bus.write_i2c_block_data(self.address, reg, list)[m
+[31m-    except IOError, err:[m
+[31m-      return self.errMsg()[m
+[31m-[m
+[31m-  def readList(self, reg, length):[m
+[31m-    "Read a list of bytes from the I2C device"[m
+[31m-    try:[m
+[31m-      results = self.bus.read_i2c_block_data(self.address, reg, length)[m
+[31m-      if self.debug:[m
+[31m-        print ("I2C: Device 0x%02X returned the following from reg 0x%02X" %[m
+[31m-         (self.address, reg))[m
+[31m-        print results[m
+[31m-      return results[m
+[31m-    except IOError, err:[m
+[31m-      return self.errMsg()[m
+[31m-[m
+[31m-  def readU8(self, reg):[m
+[31m-    "Read an unsigned byte from the I2C device"[m
+[31m-    try:[m
+[31m-      result = self.bus.read_byte_data(self.address, reg)[m
+[31m-      if self.debug:[m
+[31m-        print ("I2C: Device 0x%02X returned 0x%02X from reg 0x%02X" %[m
+[31m-         (self.address, result & 0xFF, reg))[m
+[31m-      return result[m
+[31m-    except IOError, err:[m
+[31m-      return self.errMsg()[m
+[31m-[m
+[31m-  def readS8(self, reg):[m
+[31m-    "Reads a signed byte from the I2C device"[m
+[31m-    try:[m
+[31m-      result = self.bus.read_byte_data(self.address, reg)[m
+[31m-      if result > 127: result -= 256[m
+[31m-      if self.debug:[m
+[31m-        print ("I2C: Device 0x%02X returned 0x%02X from reg 0x%02X" %[m
+[31m-         (self.address, result & 0xFF, reg))[m
+[31m-      return result[m
+[31m-    except IOError, err:[m
+[31m-      return self.errMsg()[m
+[31m-[m
+[31m-  def readU16(self, reg):[m
+[31m-    "Reads an unsigned 16-bit value from the I2C device"[m
+[31m-    try:[m
+[31m-      hibyte = self.readU8(reg)[m
+[31m-      lobyte = self.readU8(reg+1)[m
+[31m-      result = (hibyte << 8) + lobyte[m
+[31m-      if (self.debug):[m
+[31m-        print "I2C
