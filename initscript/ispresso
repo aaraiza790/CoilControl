@@ -43,8 +43,7 @@ SCRIPTNAME=/etc/init.d/$NAME
 do_start()
 {
 	# need to load i2c module explicitly because the 3.18 changes have borked this whole thing 
-	modprobe i2c_dev
-	i2cdetect -y 1 > /var/log/i2cdetect.log
+
 
 	# Return
 	#   0 if daemon has been started
