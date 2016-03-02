@@ -37,34 +37,28 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 import web, random, json, atexit
 from pid import pidpy as PIDController
 import RPi.GPIO as GPIO 
-from lcd import lcddriver
 import glob
 
 # logging.basicConfig()
-logger = logging.getLogger('ispresso')
+#logger = logging.getLogger('ispresso')
 
 
 # REMOTE DEBUG -- TODO:  Remove this before going to production
 # import rpdb2 
 # rpdb2.start_embedded_debugger('funkymonkey', fAllowRemote = True)
 
-gpio_heat = 24
-gpio_pump = 23
-gpio_btn_heat_led = 8
-gpio_btn_heat_sig = 7
-gpio_btn_pump_led = 10
-gpio_btn_pump_sig = 9
+gpio_heat = 12
+gpio_btn_heat_led = 5
+gpio_btn_heat_sig = 6
+
 
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM) 
 GPIO.setup(gpio_btn_heat_sig, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) 
-GPIO.setup(gpio_btn_pump_sig, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) 
 GPIO.setup(gpio_heat, GPIO.OUT) 
-GPIO.setup(gpio_pump, GPIO.OUT) 
 GPIO.setup(gpio_btn_heat_led, GPIO.OUT)
-GPIO.setup(gpio_btn_pump_led, GPIO.OUT)
 
-def logger_init():
+#def logger_init():
 
     logger.setLevel(logging.DEBUG)
     log_file_size = 1024 * 1024 * 1  # 1 MB
@@ -128,7 +122,7 @@ class param:
     mode = "off"
     cycle_time = 2.0
     duty_cycle = 0.0
-    set_point = 211
+    set_point = 640
     k_param = 6  # was 6
     i_param = 60  # was 120
     d_param = 15  # was 5
@@ -250,45 +244,6 @@ def heatProc(cycle_time, duty_cycle, conn):
         logger.error(''.join('!! ' + line for line in traceback.format_exception(exc_type, exc_value, exc_traceback)))
 
 
-def lcdControlProc(lcd_child_conn):
-    p = current_process()
-    logger = logging.getLogger("ispresso").getChild("lcdControlProc")
-    logger.info('Starting:' + p.name + ":" + str(p.pid))
-
-    lcd = lcddriver.lcd()
-    
-    last_line1 = ""
-    last_line2 = ""
-
-    while (True):
-        time.sleep(0.25)
-        while lcd_child_conn.poll():
-            try:
-                line1, line2, duration = lcd_child_conn.recv()
-                if line1 is not None: 
-                    if last_line1 != line1:
-                        lcd.lcd_display_string(line1.ljust(16), 1)
-                        last_line1 = line1
-                        time.sleep(duration)
-                    
-                if line2 is not None:
-                    if last_line2 != line2:
-                        lcd.lcd_display_string(line2.ljust(16), 2)
-                        last_line2 = line2
-                        time.sleep(duration)
-
-            except:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                logger.error(''.join('!! ' + line for line in traceback.format_exception(exc_type, exc_value, exc_traceback)))
-                subprocess.call(['i2cdetect', '-y', '1'])
-                try:
-                    lcd = None
-                    time.sleep(0.1)
-                    lcd = lcddriver.lcd()
-                    time.sleep(0.1)
-                except:  
-                    logger.error("Trying to re-initialize the LCD by nulling it out and re-instantiating.  Couldln't pull it off :(")
-                continue
 
 
 def brewControlProc(brew_child_conn):
@@ -932,7 +887,7 @@ if __name__ == '__main__':
     
         call(["modprobe", "w1-gpio"])
         call(["modprobe", "w1-therm"])
-        call(["modprobe", "i2c-dev"])
+     
         
         base_dir = '/sys/bus/w1/devices/'
         
@@ -954,8 +909,8 @@ if __name__ == '__main__':
         statusQ = Queue(2)       
         parent_conn, child_conn = Pipe()
     
-        lcd_parent_conn, lcd_child_conn = Pipe()
-        mem.lcd_connection = lcd_parent_conn
+        #lcd_parent_conn, lcd_child_conn = Pipe()
+        #mem.lcd_connection = lcd_parent_conn
 
         initialize()
 
@@ -970,9 +925,9 @@ if __name__ == '__main__':
         GPIO.add_event_detect(gpio_btn_heat_sig, GPIO.RISING, callback=catchButton, bouncetime=250)  
         GPIO.add_event_detect(gpio_btn_pump_sig, GPIO.RISING, callback=catchButton, bouncetime=250)  # was RISING, at one point HIGH. who knows
 
-        mem.heat_connection = parent_conn
-        lcdproc = Process(name="lcdControlProc", target=lcdControlProc, args=(lcd_child_conn,))
-        lcdproc.start()
+        #mem.heat_connection = parent_conn
+        #lcdproc = Process(name="lcdControlProc", target=lcdControlProc, args=(lcd_child_conn,))
+        #lcdproc.start()
         
         brewproc = Process(name="brewControlProc", target=brewControlProc, args=(brew_child_conn,))
         brewproc.start()
