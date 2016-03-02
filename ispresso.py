@@ -90,7 +90,7 @@ class mem:  # global class
     cache_start_time = None
     cache_end_time = None
     heat_connection = Pipe()
-    lcd_connection = Pipe()
+    #lcd_connection = Pipe()
     brew_connection = Pipe()
     cloud_connection = Pipe()
     flag_pump_on = False
