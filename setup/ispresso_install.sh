@@ -21,11 +21,21 @@ sudo pip install web.py
 sudo pip install simplejson
 sudo easy_install -U distribute
 
+# enable i2c (for LCD screen)
+#sudo apt-get -y install python-smbus
+
+#  create a kernel module config file 
+#sudo touch /etc/modprobe.d/i2c.conf
+#echo 'install i2c-bcm2708 /bin/true' | sudo tee #/etc/modprobe.d/i2c
+#echo 'install i2c-dev /bin/true' | sudo tee --append #/etc/modprobe.d/i2c
 
 sudo touch /etc/modprobe.d/onewire.conf
 echo 'install w1-gpio /bin/true' | sudo tee /etc/modprobe.d/onewire
 echo 'install w1-therm /bin/true' | sudo tee --append  /etc/modprobe.d/onewire
 
+# load kernel modules 
+#sudo modprobe i2c-bcm2708
+#sudo modprobe i2c-dev
 
 sudo modprobe w1-gpio
 sudo modprobe w1-therm

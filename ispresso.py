@@ -37,10 +37,11 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 import web, random, json, atexit
 from pid import pidpy as PIDController
 import RPi.GPIO as GPIO 
+#from lcd import lcddriver
 import glob
 
 # logging.basicConfig()
-#logger = logging.getLogger('ispresso')
+logger = logging.getLogger('ispresso')
 
 
 # REMOTE DEBUG -- TODO:  Remove this before going to production
@@ -51,14 +52,13 @@ gpio_heat = 12
 gpio_btn_heat_led = 5
 gpio_btn_heat_sig = 6
 
-
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM) 
 GPIO.setup(gpio_btn_heat_sig, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) 
 GPIO.setup(gpio_heat, GPIO.OUT) 
 GPIO.setup(gpio_btn_heat_led, GPIO.OUT)
 
-#def logger_init():
+def logger_init():
 
     logger.setLevel(logging.DEBUG)
     log_file_size = 1024 * 1024 * 1  # 1 MB
@@ -82,8 +82,8 @@ def initialize():
         setup.smart_connect()
     else:
         logger.info("WiFi connection looks ok")
-        mem.lcd_connection.send(["Coil King", "WiFi Connected", 3])
-        mem.lcd_connection.send(["Coil King", "", 0])
+        mem.lcd_connection.send(["iSPRESSO", "WiFi OK", 3])
+        mem.lcd_connection.send(["iSPRESSO", "", 0])
 
 class mem:  # global class  
     cache_day = None
@@ -122,7 +122,7 @@ class param:
     mode = "off"
     cycle_time = 2.0
     duty_cycle = 0.0
-    set_point = 640
+    set_point = 211
     k_param = 6  # was 6
     i_param = 60  # was 120
     d_param = 15  # was 5
@@ -244,6 +244,45 @@ def heatProc(cycle_time, duty_cycle, conn):
         logger.error(''.join('!! ' + line for line in traceback.format_exception(exc_type, exc_value, exc_traceback)))
 
 
+#def lcdControlProc(lcd_child_conn):
+    p = current_process()
+    logger = logging.getLogger("ispresso").getChild("lcdControlProc")
+    logger.info('Starting:' + p.name + ":" + str(p.pid))
+
+   #lcd = lcddriver.lcd()
+    
+    last_line1 = ""
+    last_line2 = ""
+
+   # while (True):
+        time.sleep(0.25)
+        #while lcd_child_conn.poll():
+           # try:
+                line1, line2, duration = lcd_child_conn.recv()
+                if line1 is not None: 
+                    if last_line1 != line1:
+                        lcd.lcd_display_string(line1.ljust(16), 1)
+                        last_line1 = line1
+                        time.sleep(duration)
+                    
+                if line2 is not None:
+                    if last_line2 != line2:
+                        lcd.lcd_display_string(line2.ljust(16), 2)
+                        last_line2 = line2
+                        time.sleep(duration)
+
+            #except:
+                #exc_type, exc_value, exc_traceback = sys.exc_info()
+                #logger.error(''.join('!! ' + line for line in traceback.format_exception(exc_type, exc_value, exc_traceback)))
+                #subprocess.call(['i2cdetect', '-y', '1'])
+                try:
+                    #lcd = None
+                    time.sleep(0.1)
+                    lcd = lcddriver.lcd()
+                   # time.sleep(0.1)
+                except:  
+                   # logger.error("Trying to re-initialize the #LCD by nulling it out and re-instantiating.  Couldln't pull it #off :(")
+                #continue
 
 
 def brewControlProc(brew_child_conn):
@@ -404,7 +443,7 @@ def tempControlProc(global_vars, mode, cycle_time, duty_cycle, set_point, k_para
                 temp_C_str = "%3.2f" % temp_C
                 temp_F_str = "%3.2f" % temp_F
                 temp_F_pretty = "%3.0f" % temp_F
-                mem.lcd_connection.send(['Coil King ' + str(temp_F_pretty) + ' F', None, 0])
+                mem.lcd_connection.send(['iSPRESSO ' + str(temp_F_pretty) + ' F', None, 0])
 
                 readytemp = True
             if readytemp == True:
@@ -887,7 +926,7 @@ if __name__ == '__main__':
     
         call(["modprobe", "w1-gpio"])
         call(["modprobe", "w1-therm"])
-     
+        #call(["modprobe", "i2c-dev"])
         
         base_dir = '/sys/bus/w1/devices/'
         
@@ -923,10 +962,10 @@ if __name__ == '__main__':
         global_vars = globalvars()
         
         GPIO.add_event_detect(gpio_btn_heat_sig, GPIO.RISING, callback=catchButton, bouncetime=250)  
-        GPIO.add_event_detect(gpio_btn_pump_sig, GPIO.RISING, callback=catchButton, bouncetime=250)  # was RISING, at one point HIGH. who knows
+        #GPIO.add_event_detect(gpio_btn_pump_sig, GPIO.RISING, callback=catchButton, bouncetime=250)  # was RISING, at one point HIGH. who knows
 
-        #mem.heat_connection = parent_conn
-        #lcdproc = Process(name="lcdControlProc", target=lcdControlProc, args=(lcd_child_conn,))
+        mem.heat_connection = parent_conn
+        #lcdproc = Process(name="lcdControlProc", #target=lcdControlProc, args=(lcd_child_conn,))
         #lcdproc.start()
         
         brewproc = Process(name="brewControlProc", target=brewControlProc, args=(brew_child_conn,))
