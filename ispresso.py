@@ -79,19 +79,19 @@ def initialize():
 
     if setup.wifi_connect() == False:  # this needs to happen after lcd pipe is set up
         logger.warn("WiFi can't connect to internet.  Entering Smart Connect mode.  Connect to iSPRESSO wireless network.")
-        mem.lcd_connection.send(["iSPRESSO WiFi", "Access Point", 0])
+        #mem.lcd_connection.send(["iSPRESSO WiFi", "Access Point", 0])
         setup.smart_connect()
     else:
         logger.info("WiFi connection looks ok")
-        mem.lcd_connection.send(["iSPRESSO", "WiFi OK", 3])
-        mem.lcd_connection.send(["iSPRESSO", "", 0])
+        #mem.lcd_connection.send(["iSPRESSO", "WiFi OK", 3])
+        #mem.lcd_connection.send(["iSPRESSO", "", 0])
 
 class mem:  # global class  
     cache_day = None
     cache_start_time = None
     cache_end_time = None
     heat_connection = Pipe()
-    lcd_connection = Pipe()
+    #lcd_connection = Pipe()
     brew_connection = Pipe()
     cloud_connection = Pipe()
     flag_pump_on = False
@@ -123,7 +123,7 @@ class param:
     mode = "off"
     cycle_time = 2.0
     duty_cycle = 0.0
-    set_point = 211
+    set_point = 655
     k_param = 6  # was 6
     i_param = 60  # was 120
     d_param = 15  # was 5
@@ -259,16 +259,16 @@ def heatProc(cycle_time, duty_cycle, conn):
         time.sleep(0.25)
         #while lcd_child_conn.poll():
            # try:
-                line1, line2, duration = lcd_child_conn.recv()
+                #line1, line2, duration = lcd_child_conn.recv()
                 if line1 is not None: 
                     if last_line1 != line1:
-                        lcd.lcd_display_string(line1.ljust(16), 1)
+                        #lcd.lcd_display_string(line1.ljust(16), 1)
                         last_line1 = line1
                         time.sleep(duration)
                     
                 if line2 is not None:
                     if last_line2 != line2:
-                        lcd.lcd_display_string(line2.ljust(16), 2)
+                        #lcd.lcd_display_string(line2.ljust(16), 2)
                         last_line2 = line2
                         time.sleep(duration)
 
@@ -279,7 +279,7 @@ def heatProc(cycle_time, duty_cycle, conn):
                 try:
                     #lcd = None
                     time.sleep(0.1)
-                    lcd = lcddriver.lcd()
+                    #lcd = lcddriver.lcd()
                    # time.sleep(0.1)
                 except:  
                    # logger.error("Trying to re-initialize the #LCD by nulling it out and re-instantiating.  Couldln't pull it #off :(")
